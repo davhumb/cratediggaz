@@ -687,19 +687,24 @@ async function fetchBpmForVinyl(vid){
     if(dot)dot.className='bpm-dot loading';
     try{
       const q=encodeURIComponent(v.artist+' '+t.title);
-      const url=`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`;
-      const r=await fetch(url);
+      const r=await fetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
       const data=await r.json();
       if(data.search&&data.search.length>0){
-        const bpm=data.search[0].tempo;
-        vinyls[vi].tracklist[i].bpm=bpm;
-        save();
-        const inp=document.getElementById(`tbpm_${vid}_${i}`);
-        if(inp)inp.value=bpm;
-        if(dot)dot.className='bpm-dot found';
+        const songId=data.search[0].id;
+        await new Promise(r=>setTimeout(r,700));
+        const r2=await fetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
+        const data2=await r2.json();
+        const bpm=data2.song&&data2.song.tempo?data2.song.tempo:null;
+        if(bpm){
+          vinyls[vi].tracklist[i].bpm=bpm;
+          save();
+          const inp=document.getElementById(`tbpm_${vid}_${i}`);
+          if(inp)inp.value=bpm;
+          if(dot)dot.className='bpm-dot found';
+        } else {if(dot)dot.className='bpm-dot missing';}
       } else {if(dot)dot.className='bpm-dot missing';}
     }catch{if(dot)dot.className='bpm-dot missing';}
-    await new Promise(r=>setTimeout(r,1200)); // rate limit
+    await new Promise(r=>setTimeout(r,800));
   }
 }
 
@@ -739,14 +744,20 @@ async function processBpmQueue(){
     fill.style.width=`${(done/total*100).toFixed(1)}%`;
     try{
       const q=encodeURIComponent(item.artist+' '+item.title);
-      const url=`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`;
-      const r=await fetch(url);
+      const r=await fetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
       const data=await r.json();
       if(data.search&&data.search.length>0){
-        const vi=vinyls.findIndex(v=>v.id===item.vid);
-        if(vi>=0&&vinyls[vi].tracklist[item.idx]){
-          vinyls[vi].tracklist[item.idx].bpm=data.search[0].tempo;
-          save();
+        const songId=data.search[0].id;
+        await new Promise(r=>setTimeout(r,700));
+        const r2=await fetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
+        const data2=await r2.json();
+        const bpm=data2.song&&data2.song.tempo?data2.song.tempo:null;
+        if(bpm){
+          const vi=vinyls.findIndex(v=>v.id===item.vid);
+          if(vi>=0&&vinyls[vi].tracklist[item.idx]){
+            vinyls[vi].tracklist[item.idx].bpm=bpm;
+            save();
+          }
         }
       }
     }catch(e){console.warn('BPM fetch error',e);}
