@@ -324,7 +324,7 @@ body::before{
 <body>
 
 <div class="header">
-  <div class="logo">CRATEDIGGAZ</div>
+  <div class="logo" id="logoBtn" onclick="handleLogoClick()">CRATEDIGGAZ</div>
   <div class="logo-sub">// HIP-HOP VINYL</div>
   <div class="header-right">
     <button class="btn icon" onclick="openConfig()" title="Config">⚙</button>
@@ -478,6 +478,39 @@ body::before{
     <div class="modal-footer">
       <button class="btn xs" onclick="closeModal('configOverlay')">Cancel</button>
       <button class="btn primary xs" onclick="saveConfig()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEV MODE -->
+<div class="overlay center hidden" id="devOverlay">
+  <div class="modal" style="max-width:420px;border-top-color:var(--accent2)">
+    <button class="close-btn" onclick="closeModal('devOverlay')">✕</button>
+    <div class="modal-title" style="color:var(--accent2)">DEV MODE</div>
+
+    <div class="cs" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px">
+      <h3 style="color:var(--muted)">SYSTEM INFO</h3>
+      <div id="devInfo"></div>
+    </div>
+
+    <div class="cs" style="border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px">
+      <h3 style="color:var(--muted)">BPM API TEST</h3>
+      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <button class="btn xs primary" onclick="devTestBpm()">Test search</button>
+        <input type="text" id="devSongId" placeholder="Song ID..." style="flex:1;min-width:80px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Fragment Mono',monospace;font-size:10px;padding:3px 7px;outline:none;">
+        <button class="btn xs" onclick="devTestBpmSong()">Get song</button>
+      </div>
+      <div id="devTestResult" style="font-size:10px;color:var(--accent3);line-height:1.5;word-break:break-all;min-height:20px"></div>
+    </div>
+
+    <div class="cs">
+      <h3 style="color:var(--muted)">DATA</h3>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn xs" onclick="devExportData()">⬇ Export JSON</button>
+        <button class="btn xs" onclick="devImportData()">⬆ Import JSON</button>
+        <button class="btn xs" onclick="devClearBpms()">Clear BPMs</button>
+        <button class="btn xs danger" onclick="devClearAll()">⚠ Clear all</button>
+      </div>
     </div>
   </div>
 </div>
@@ -791,17 +824,28 @@ async function fetchBpmForVinyl(vid){
   }
 }
 
+async function bpmFetch(url){
+  try{
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('status '+r.status);
+    return await r.json();
+  }catch{
+    const proxy=`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
+    const r2=await fetch(proxy);
+    if(!r2.ok)throw new Error('proxy error '+r2.status);
+    return await r2.json();
+  }
+}
+
 async function fetchOneBpm(key,artist,title,vid,trackIdx){
   const dot=document.getElementById(`bdot_${vid}_${trackIdx}`);
   try{
     const q=encodeURIComponent(artist+' '+title);
-    const r1=await fetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
-    const d1=await r1.json();
+    const d1=await bpmFetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
     if(d1.search&&d1.search.length>0){
       const songId=d1.search[0].id;
       await new Promise(r=>setTimeout(r,800));
-      const r2=await fetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
-      const d2=await r2.json();
+      const d2=await bpmFetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
       const bpm=d2.song&&d2.song.tempo?parseInt(d2.song.tempo):null;
       if(bpm){
         const vi=vinyls.findIndex(v=>v.id===vid);
@@ -817,7 +861,6 @@ async function fetchOneBpm(key,artist,title,vid,trackIdx){
     if(dot)dot.className='bpm-dot missing';
   }catch(e){console.warn('BPM error',e);if(dot)dot.className='bpm-dot missing';}
 }
-
 // ── BPM QUEUE (batch) ─────────────────────────────────
 function startBpmQueue(){
   const key=localStorage.getItem('bpm_api_key');
@@ -848,13 +891,11 @@ async function processBpmQueue(){
     fill.style.width=`${(done/total*100).toFixed(1)}%`;
     try{
       const q=encodeURIComponent(item.artist+' '+item.title);
-      const r1=await fetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
-      const d1=await r1.json();
+      const d1=await bpmFetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
       if(d1.search&&d1.search.length>0){
         const songId=d1.search[0].id;
         await new Promise(r=>setTimeout(r,800));
-        const r2=await fetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
-        const d2=await r2.json();
+        const d2=await bpmFetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
         const bpm=d2.song&&d2.song.tempo?parseInt(d2.song.tempo):null;
         if(bpm){
           const vi=vinyls.findIndex(v=>v.id===item.vid);
@@ -979,9 +1020,109 @@ function openStats(){
   document.getElementById('statsOverlay').classList.remove('hidden');
 }
 
-// ── KEYBOARD ──────────────────────────────────────────
+// ── DEV MODE (triple click on logo) ──────────────────
+let _lc=0,_lt=0;
+function handleLogoClick(){
+  const now=Date.now();
+  if(now-_lt>600)_lc=0;
+  _lt=now;_lc++;
+  if(_lc>=3){_lc=0;openDevMode();}
+}
+
+function openDevMode(){
+  document.getElementById('devOverlay').classList.remove('hidden');
+  refreshDevInfo();
+}
+
+function refreshDevInfo(){
+  const key=localStorage.getItem('bpm_api_key')||'—';
+  const token=localStorage.getItem('discogs_token')||'—';
+  const tracksTotal=vinyls.reduce((a,v)=>a+(v.tracklist?v.tracklist.length:0),0);
+  const tracksWithBpm=vinyls.reduce((a,v)=>a+(v.tracklist?v.tracklist.filter(t=>t.bpm).length:0),0);
+  const withCover=vinyls.filter(v=>v.coverUrl).length;
+  const withRelId=vinyls.filter(v=>v.discogsReleaseId).length;
+  document.getElementById('devInfo').innerHTML=`
+    <div class="sr"><span class="k">Discogs token</span><span class="v" style="font-size:9px;word-break:break-all">${esc(token.slice(0,8))}...</span></div>
+    <div class="sr"><span class="k">BPM key</span><span class="v" style="font-size:9px;word-break:break-all">${esc(key.slice(0,8))}...</span></div>
+    <div class="sr"><span class="k">Vinyls</span><span class="v">${vinyls.length}</span></div>
+    <div class="sr"><span class="k">With cover</span><span class="v">${withCover}</span></div>
+    <div class="sr"><span class="k">With Discogs ID</span><span class="v">${withRelId}</span></div>
+    <div class="sr"><span class="k">Total tracks</span><span class="v">${tracksTotal}</span></div>
+    <div class="sr"><span class="k">Tracks with BPM</span><span class="v">${tracksWithBpm} / ${tracksTotal}</span></div>
+    <div class="sr"><span class="k">localStorage size</span><span class="v">${(JSON.stringify(localStorage).length/1024).toFixed(1)} KB</span></div>
+  `;
+}
+
+async function devTestBpm(){
+  const key=localStorage.getItem('bpm_api_key');
+  if(!key){document.getElementById('devTestResult').textContent='No BPM key configured.';return;}
+  document.getElementById('devTestResult').textContent='Testing...';
+  try{
+    const url=`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=Nas+N.Y.+State+of+Mind`;
+    const d=await bpmFetch(url);
+    if(d.search&&d.search.length>0){
+      const s=d.search[0];
+      document.getElementById('devTestResult').textContent=`✓ API OK — found: "${s.title}" id:${s.id}`;
+    } else if(d.error){
+      document.getElementById('devTestResult').textContent=`✗ API error: ${JSON.stringify(d.error)}`;
+    } else {
+      document.getElementById('devTestResult').textContent=`? No results. Raw: ${JSON.stringify(d).slice(0,100)}`;
+    }
+  }catch(e){
+    document.getElementById('devTestResult').textContent=`✗ Fetch error: ${e.message}`;
+  }
+}
+
+async function devTestBpmSong(){
+  const key=localStorage.getItem('bpm_api_key');
+  const id=document.getElementById('devSongId').value.trim();
+  if(!key||!id){document.getElementById('devTestResult').textContent='Need key + song ID.';return;}
+  document.getElementById('devTestResult').textContent='Fetching song...';
+  try{
+    const d=await bpmFetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${id}`);
+    document.getElementById('devTestResult').textContent=`Raw: ${JSON.stringify(d).slice(0,200)}`;
+  }catch(e){
+    document.getElementById('devTestResult').textContent=`✗ ${e.message}`;
+  }
+}
+
+function devExportData(){
+  const blob=new Blob([JSON.stringify(vinyls,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='cratediggaz_backup.json';a.click();
+}
+
+function devImportData(){
+  const input=document.createElement('input');input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const imported=JSON.parse(ev.target.result);
+        if(!Array.isArray(imported))throw new Error('Invalid format');
+        vinyls=imported;save();render();
+        document.getElementById('devTestResult').textContent=`✓ Imported ${imported.length} vinyls.`;
+        refreshDevInfo();
+      }catch(e){document.getElementById('devTestResult').textContent=`✗ Import error: ${e.message}`;}
+    };r.readAsText(f);
+  };input.click();
+}
+
+function devClearBpms(){
+  if(!confirm('Clear all track BPMs?'))return;
+  vinyls.forEach(v=>{if(v.tracklist)v.tracklist.forEach(t=>t.bpm=null);});
+  save();refreshDevInfo();
+  document.getElementById('devTestResult').textContent='✓ All track BPMs cleared.';
+}
+
+function devClearAll(){
+  if(!confirm('⚠️ Delete ALL vinyls? Cannot be undone.'))return;
+  vinyls=[];save();render();closeModal('devOverlay');
+}
+
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')['addOverlay','detailOverlay','statsOverlay','configOverlay'].forEach(id=>closeModal(id));
+  if(e.key==='Escape')['addOverlay','detailOverlay','statsOverlay','configOverlay','devOverlay'].forEach(id=>closeModal(id));
 });
 
 // ── DEMO DATA ─────────────────────────────────────────
