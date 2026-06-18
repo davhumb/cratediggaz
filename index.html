@@ -840,14 +840,11 @@ async function bpmFetch(url){
 async function fetchOneBpm(key,artist,title,vid,trackIdx){
   const dot=document.getElementById(`bdot_${vid}_${trackIdx}`);
   try{
-    const q=encodeURIComponent(artist+' '+title);
+    const q=encodeURIComponent(title); // title only — more matches
     const d1=await bpmFetch(`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${q}`);
-    if(d1.search&&d1.search.length>0){
-      const songId=d1.search[0].id;
-      await new Promise(r=>setTimeout(r,800));
-      const d2=await bpmFetch(`https://api.getsong.co/song/?api_key=${key}&id=${songId}`);
-      const bpm=d2.song&&d2.song.tempo?parseInt(d2.song.tempo):null;
-      if(bpm){
+    if(d1.search&&Array.isArray(d1.search)&&d1.search.length>0){
+      const bpm=parseInt(d1.search[0].tempo);
+      if(bpm&&bpm>0){
         const vi=vinyls.findIndex(v=>v.id===vid);
         if(vi>=0&&vinyls[vi].tracklist[trackIdx]){
           vinyls[vi].tracklist[trackIdx].bpm=bpm;save();
@@ -890,14 +887,11 @@ async function processBpmQueue(){
     count.textContent=`${done}/${total}`;
     fill.style.width=`${(done/total*100).toFixed(1)}%`;
     try{
-      const q=encodeURIComponent(item.artist+' '+item.title);
+      const q=encodeURIComponent(item.title);
       const d1=await bpmFetch(`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${q}`);
-      if(d1.search&&d1.search.length>0){
-        const songId=d1.search[0].id;
-        await new Promise(r=>setTimeout(r,800));
-        const d2=await bpmFetch(`https://api.getsong.co/song/?api_key=${key}&id=${songId}`);
-        const bpm=d2.song&&d2.song.tempo?parseInt(d2.song.tempo):null;
-        if(bpm){
+      if(d1.search&&Array.isArray(d1.search)&&d1.search.length>0){
+        const bpm=parseInt(d1.search[0].tempo);
+        if(bpm&&bpm>0){
           const vi=vinyls.findIndex(v=>v.id===item.vid);
           if(vi>=0&&vinyls[vi].tracklist[item.idx]){vinyls[vi].tracklist[item.idx].bpm=bpm;save();}
         }
