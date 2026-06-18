@@ -841,11 +841,11 @@ async function fetchOneBpm(key,artist,title,vid,trackIdx){
   const dot=document.getElementById(`bdot_${vid}_${trackIdx}`);
   try{
     const q=encodeURIComponent(artist+' '+title);
-    const d1=await bpmFetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
+    const d1=await bpmFetch(`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${q}`);
     if(d1.search&&d1.search.length>0){
       const songId=d1.search[0].id;
       await new Promise(r=>setTimeout(r,800));
-      const d2=await bpmFetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
+      const d2=await bpmFetch(`https://api.getsong.co/song/?api_key=${key}&id=${songId}`);
       const bpm=d2.song&&d2.song.tempo?parseInt(d2.song.tempo):null;
       if(bpm){
         const vi=vinyls.findIndex(v=>v.id===vid);
@@ -891,11 +891,11 @@ async function processBpmQueue(){
     fill.style.width=`${(done/total*100).toFixed(1)}%`;
     try{
       const q=encodeURIComponent(item.artist+' '+item.title);
-      const d1=await bpmFetch(`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=${q}`);
+      const d1=await bpmFetch(`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${q}`);
       if(d1.search&&d1.search.length>0){
         const songId=d1.search[0].id;
         await new Promise(r=>setTimeout(r,800));
-        const d2=await bpmFetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${songId}`);
+        const d2=await bpmFetch(`https://api.getsong.co/song/?api_key=${key}&id=${songId}`);
         const bpm=d2.song&&d2.song.tempo?parseInt(d2.song.tempo):null;
         if(bpm){
           const vi=vinyls.findIndex(v=>v.id===item.vid);
@@ -1058,7 +1058,7 @@ async function devTestBpm(){
   if(!key){document.getElementById('devTestResult').textContent='No BPM key configured.';return;}
   document.getElementById('devTestResult').textContent='Testing...';
   try{
-    const url=`https://api.getsongbpm.com/search/?api_key=${key}&type=song&lookup=Nas+N.Y.+State+of+Mind`;
+    const url=`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=Nas+N.Y.+State+of+Mind`;
     const d=await bpmFetch(url);
     if(d.search&&d.search.length>0){
       const s=d.search[0];
@@ -1079,7 +1079,7 @@ async function devTestBpmSong(){
   if(!key||!id){document.getElementById('devTestResult').textContent='Need key + song ID.';return;}
   document.getElementById('devTestResult').textContent='Fetching song...';
   try{
-    const d=await bpmFetch(`https://api.getsongbpm.com/song/?api_key=${key}&id=${id}`);
+    const d=await bpmFetch(`https://api.getsong.co/song/?api_key=${key}&id=${id}`);
     document.getElementById('devTestResult').textContent=`Raw: ${JSON.stringify(d).slice(0,200)}`;
   }catch(e){
     document.getElementById('devTestResult').textContent=`✗ ${e.message}`;
