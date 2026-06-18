@@ -342,21 +342,6 @@ body::before{
     <option value="owned">Owned</option>
     <option value="wishlist">Wish</option>
   </select>
-  <select class="tb-select" id="filterEra" onchange="render()">
-    <option value="">Era</option>
-    <option value="80s">80s</option>
-    <option value="88-94">Golden Age</option>
-    <option value="95-99">95–99</option>
-    <option value="00s">2000s</option>
-    <option value="10s">2010s</option>
-    <option value="20s">2020s</option>
-  </select>
-  <select class="tb-select" id="filterMood" onchange="render()">
-    <option value="">Style</option>
-    <option>Boom Bap</option><option>Jazz Rap</option><option>West Coast</option>
-    <option>East Coast</option><option>Gangsta</option><option>Underground</option>
-    <option>Lo-Fi</option><option>Conscious</option><option>Instrumental</option><option>Autre</option>
-  </select>
   <select class="tb-select" id="sortBy" onchange="render()">
     <option value="added">Recent</option>
     <option value="artist">Artist A→Z</option>
@@ -632,11 +617,9 @@ function getSorted(arr){
 function filtered(){
   const q=document.getElementById('searchInput').value.toLowerCase();
   const st=document.getElementById('filterStatus').value;
-  const era=document.getElementById('filterEra').value;
-  const mood=document.getElementById('filterMood').value;
   return vinyls.filter(v=>{
     const mQ=!q||[v.artist,v.album,v.label,v.producer,v.note].some(f=>(f||'').toLowerCase().includes(q));
-    return mQ&&(!st||v.status===st)&&(!era||getEra(v.year)===era)&&(!mood||v.mood===mood);
+    return mQ&&(!st||v.status===st);
   });
 }
 
