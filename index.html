@@ -538,28 +538,39 @@ async function openScanner(){
   document.getElementById('scannerPanel').style.display='block';
   document.getElementById('scanStatus').textContent='Démarrage caméra...';
   try{
-    const ZXing=window.ZXing||window['@zxing/library'];
-    scanReader=new ZXing.BrowserMultiFormatReader();
-    const devices=await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
-    // prefer back camera
-    const cam=devices.find(d=>/(back|rear|environment)/i.test(d.label))||devices[devices.length-1];
+    const codeReader=new ZXing.BrowserMultiFormatReader();
+    scanReader=codeReader;
     const video=document.getElementById('scanVideo');
     document.getElementById('scanStatus').textContent='Pointez le code-barres du vinyl...';
-    await scanReader.decodeFromVideoDevice(cam?cam.deviceId:undefined, video, async(result,err)=>{
-      if(result){
-        const code=result.getText();
-        document.getElementById('scanStatus').textContent=`✓ Code: ${code} — recherche...`;
-        closeScanner();
-        await searchByBarcode(code);
-      }
-    });
+    // Use environment (back) camera directly
+    const constraints={video:{facingMode:'environment'}};
+    scanStream=await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject=scanStream;
+    await video.play();
+    // Decode continuously
+    const tick=()=>{
+      if(!scanStream)return;
+      try{
+        codeReader.decodeFromVideoElement(video).then(result=>{
+          if(result){
+            const code=result.getText();
+            document.getElementById('scanStatus').textContent=`✓ ${code}`;
+            closeScanner();
+            searchByBarcode(code);
+          }
+        }).catch(()=>{});
+      }catch(e){}
+      if(scanStream)setTimeout(tick,300);
+    };
+    setTimeout(tick,500);
   }catch(e){
-    document.getElementById('scanStatus').textContent=`Erreur caméra: ${e.message}`;
+    document.getElementById('scanStatus').textContent=`Erreur: ${e.message}`;
   }
 }
 
 function closeScanner(){
-  if(scanReader){scanReader.reset();scanReader=null;}
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+  if(scanReader){try{scanReader.reset();}catch(e){}scanReader=null;}
   document.getElementById('scannerPanel').style.display='none';
 }
 
