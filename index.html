@@ -400,8 +400,22 @@ body::before{
       <div class="discogs-row">
         <input type="text" id="discogsQuery" placeholder="Artist — Album..." onkeydown="if(event.key==='Enter')searchDiscogs()">
         <button class="btn xs primary" onclick="searchDiscogs()">GO</button>
+        <button class="btn xs" onclick="openScanner()" title="Scan barcode">📷</button>
       </div>
       <div id="discogsResults"></div>
+    </div>
+    <!-- BARCODE SCANNER -->
+    <div id="scannerPanel" style="display:none;margin-bottom:10px;">
+      <div style="position:relative;background:#000;border:1px solid var(--border2);">
+        <video id="scanVideo" style="width:100%;max-height:220px;display:block;" playsinline></video>
+        <div style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center;">
+          <div style="width:70%;height:2px;background:var(--accent);opacity:.7;box-shadow:0 0 8px var(--accent);"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;">
+        <span id="scanStatus" style="font-size:10px;color:var(--muted)">Pointez le code-barres...</span>
+        <button class="btn xs danger" onclick="closeScanner()">✕ Stop</button>
+      </div>
     </div>
     <div class="form-row"><label>Artist *</label><input type="text" id="fArtist" placeholder="Gang Starr"></div>
     <div class="form-row"><label>Album *</label><input type="text" id="fAlbum" placeholder="Step in the Arena"></div>
@@ -515,7 +529,70 @@ body::before{
   </div>
 </div>
 
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script>
+// ── BARCODE SCANNER ───────────────────────────────────
+let scanReader=null, scanStream=null;
+
+async function openScanner(){
+  document.getElementById('scannerPanel').style.display='block';
+  document.getElementById('scanStatus').textContent='Démarrage caméra...';
+  try{
+    const ZXing=window.ZXing||window['@zxing/library'];
+    scanReader=new ZXing.BrowserMultiFormatReader();
+    const devices=await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+    // prefer back camera
+    const cam=devices.find(d=>/(back|rear|environment)/i.test(d.label))||devices[devices.length-1];
+    const video=document.getElementById('scanVideo');
+    document.getElementById('scanStatus').textContent='Pointez le code-barres du vinyl...';
+    await scanReader.decodeFromVideoDevice(cam?cam.deviceId:undefined, video, async(result,err)=>{
+      if(result){
+        const code=result.getText();
+        document.getElementById('scanStatus').textContent=`✓ Code: ${code} — recherche...`;
+        closeScanner();
+        await searchByBarcode(code);
+      }
+    });
+  }catch(e){
+    document.getElementById('scanStatus').textContent=`Erreur caméra: ${e.message}`;
+  }
+}
+
+function closeScanner(){
+  if(scanReader){scanReader.reset();scanReader=null;}
+  document.getElementById('scannerPanel').style.display='none';
+}
+
+async function searchByBarcode(barcode){
+  const token=localStorage.getItem('discogs_token');
+  const res=document.getElementById('discogsResults');
+  res.innerHTML=`<div class="d-status">Barcode ${barcode} — recherche Discogs...</div>`;
+  try{
+    const du=`https://api.discogs.com/database/search?barcode=${encodeURIComponent(barcode)}&token=${token}`;
+    let data;
+    try{const r=await fetch(du);if(!r.ok)throw new Error();data=await r.json();}
+    catch{const r2=await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(du)}`);data=await r2.json();}
+    if(!data.results||!data.results.length){
+      res.innerHTML=`<div class="d-status" style="color:var(--accent2)">Vinyl non trouvé sur Discogs (barcode: ${barcode})</div>`;
+      return;
+    }
+    // auto-fill with first result
+    fillFromDiscogs(data.results[0]);
+    res.innerHTML=`<div class="d-status" style="color:var(--owned)">✓ Vinyl trouvé ! Données importées.</div>`+
+      (data.results.length>1?data.results.slice(1,4).map(item=>`
+        <div class="discogs-result" onclick='fillFromDiscogs(${JSON.stringify(item).replace(/'/g,"&#39;")})'>
+          ${item.cover_image&&!item.cover_image.includes('spacer')
+            ?`<img class="dr-thumb" src="${esc(item.cover_image)}" onerror="this.style.display='none'">`
+            :`<div class="dr-thumb" style="display:flex;align-items:center;justify-content:center;color:var(--muted)">◎</div>`}
+          <div class="dr-info">
+            <div class="dr-title">${esc(item.title)}</div>
+            <div class="dr-sub">${esc(item.label?item.label[0]:'')}${item.year?' · '+item.year:''}</div>
+          </div>
+        </div>`).join(''):'');
+  }catch(e){
+    res.innerHTML=`<div class="d-status" style="color:var(--accent2)">Erreur: ${esc(e.message)}</div>`;
+  }
+}
 // ── DATA ──────────────────────────────────────────────
 let vinyls=JSON.parse(localStorage.getItem('csp_vinyls')||'[]');
 let currentView=localStorage.getItem('csp_view')||'list';
