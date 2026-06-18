@@ -1056,18 +1056,13 @@ function refreshDevInfo(){
 async function devTestBpm(){
   const key=localStorage.getItem('bpm_api_key');
   if(!key){document.getElementById('devTestResult').textContent='No BPM key configured.';return;}
+  const q=document.getElementById('devSongId').value.trim()||'Illmatic';
   document.getElementById('devTestResult').textContent='Testing...';
   try{
-    const url=`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=Nas+N.Y.+State+of+Mind`;
-    const d=await bpmFetch(url);
-    if(d.search&&d.search.length>0){
-      const s=d.search[0];
-      document.getElementById('devTestResult').textContent=`✓ API OK — found: "${s.title}" id:${s.id}`;
-    } else if(d.error){
-      document.getElementById('devTestResult').textContent=`✗ API error: ${JSON.stringify(d.error)}`;
-    } else {
-      document.getElementById('devTestResult').textContent=`? No results. Raw: ${JSON.stringify(d).slice(0,100)}`;
-    }
+    const url=`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${encodeURIComponent(q)}`;
+    const r=await fetch(url);
+    const d=await r.json();
+    document.getElementById('devTestResult').textContent=`HTTP:${r.status} Raw: ${JSON.stringify(d).slice(0,300)}`;
   }catch(e){
     document.getElementById('devTestResult').textContent=`✗ Fetch error: ${e.message}`;
   }
