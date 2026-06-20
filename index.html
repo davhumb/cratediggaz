@@ -602,7 +602,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
     <div class="modal-footer">
       <button class="btn danger xs" onclick="deleteFromDetail()">Delete</button>
       <button class="btn xs" onclick="editFromDetail()">Edit</button>
-      <button class="btn primary xs" onclick="closeModal('detailOverlay')">Close</button>
+      <button class="btn primary xs" onclick="saveAndCloseDetail()">Save & Close</button>
+
     </div>
   </div>
 </div>
@@ -764,8 +765,8 @@ function getSorted(arr){
   const s=document.getElementById('sortBy').value;
   return[...arr].sort((a,b)=>{
     if(s==='artist')return(a.artist||'').localeCompare(b.artist||'');
-    if(s==='year_asc')return(parseInt(a.year)||9999)-(parseInt(b.year)||9999);
-    if(s==='year_desc')return(parseInt(b.year)||0)-(parseInt(a.year)||0);
+    if(s==='year_asc')return(parseInt(a.yearOriginal||a.year)||9999)-(parseInt(b.yearOriginal||b.year)||9999);
+    if(s==='year_desc')return(parseInt(b.yearOriginal||b.year)||0)-(parseInt(a.yearOriginal||a.year)||0);
     if(s==='bpm_asc')return(parseInt(a.bpm)||9999)-(parseInt(b.bpm)||9999);
     if(s==='bpm_desc')return(parseInt(b.bpm)||0)-(parseInt(a.bpm)||0);
     return(b.added||0)-(a.added||0);
@@ -1158,7 +1159,7 @@ function renderStats(){
   const totalPrice=owned.filter(v=>v.price).reduce((s,v)=>s+parseFloat(v.price),0);
   const allBpm=vinyls.flatMap(v=>v.tracklist?v.tracklist.filter(t=>t.bpm).map(t=>parseInt(t.bpm)):[]);
   const avgBpm=allBpm.length?Math.round(allBpm.reduce((a,b)=>a+b,0)/allBpm.length):null;
-  const years=vinyls.filter(v=>v.year).map(v=>parseInt(v.year));
+  const years=vinyls.filter(v=>v.yearOriginal||v.year).map(v=>parseInt(v.yearOriginal||v.year));
   const avgYear=years.length?Math.round(years.reduce((a,b)=>a+b,0)/years.length):null;
   const mc={},ac={},ec={},lc={},pc={};
   vinyls.forEach(v=>{
@@ -1306,13 +1307,18 @@ function renderDetail(v){
     </div>
     <div id="tabInfo" class="tab-panel active">
       <div class="detail-grid">
-        <div class="df"><label>Year</label><span>${v.year||'—'}</span></div>
+        <div class="df"><label>Original Year</label><input id="detailOrigYear" type="number" value="${v.yearOriginal||v.year||''}" placeholder="ex. 1994" style="background:var(--bg3);border:1px solid var(--border2);color:var(--accent);font-family:'Fragment Mono',monospace;font-size:12px;padding:3px 6px;outline:none;width:100%;" onfocus="this.style.borderColor='var(--accent)'"></div>
         <div class="df"><label>BPM</label><span style="color:var(--accent3)">${v.bpm?v.bpm+' bpm':'—'}</span></div>
         <div class="df"><label>Label</label><span>${esc(v.label||'—')}</span></div>
         <div class="df"><label>Style</label><span>${esc(v.mood||'—')}</span></div>
         ${v.price?`<div class="df"><label>Price</label><span>${esc(v.price)}€</span></div>`:''}
+        ${v.condition?`<div class="df"><label>Condition</label><span>${esc(v.condition)}</span></div>`:''}
         ${v.producer?`<div class="df" style="grid-column:1/-1"><label>Producer</label><span>${esc(v.producer)}</span></div>`:''}
         ${v.sample?`<div class="df" style="grid-column:1/-1"><label>Samples</label><span>${esc(v.sample)}</span></div>`:''}
+      </div>
+      <div class="df" style="margin-bottom:10px">
+        <label>Version / Pressing note</label>
+        <input id="detailVersion" type="text" value="${esc(v.versionNote||v.pressing||'')}" placeholder="ex. 2023 Reissue, 180g, EU Press..." style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Fragment Mono',monospace;font-size:11px;padding:5px 7px;outline:none;" onfocus="this.style.borderColor='var(--accent)'">
       </div>
       ${v.note?`<div class="detail-note">${esc(v.note)}</div>`:''}
     </div>
@@ -1382,8 +1388,23 @@ function updateTrackBpm(vid,idx,val){
   const dot=document.getElementById(`bdot_${vid}_${idx}`);
   if(dot)dot.className='bpm-dot '+(val?'found':'missing');
 }
+function saveAndCloseDetail(){
+  // Save any track BPM edits (already saved on input change)
+  // Save original year if edited
+  const oyEl=document.getElementById('detailOrigYear');
+  const versionEl=document.getElementById('detailVersion');
+  const vi=vinyls.findIndex(v=>v.id===detailId);
+  if(vi>=0){
+    if(oyEl)vinyls[vi].yearOriginal=oyEl.value.trim();
+    if(versionEl)vinyls[vi].versionNote=versionEl.value.trim();
+    save();
+  }
+  closeModal('detailOverlay');
+  render();
+}
+
 function deleteFromDetail(){if(!confirm('Delete?'))return;vinyls=vinyls.filter(v=>v.id!==detailId);save();closeModal('detailOverlay');render();}
-function editFromDetail(){closeModal('detailOverlay');editVinyl(detailId);}
+function editFromDetail(){saveAndCloseDetail();editVinyl(detailId);}
 
 // ── DISCOGS ───────────────────────────────────────────
 async function searchDiscogs(){
