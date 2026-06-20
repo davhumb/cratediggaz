@@ -691,6 +691,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
         <button class="btn xs" onclick="devExportData()">⬇ Export JSON</button>
         <button class="btn xs" onclick="devImportData()">⬆ Import JSON</button>
         <button class="btn xs" onclick="devClearBpms()">Clear BPMs</button>
+        <button class="btn xs" onclick="const n=fixAllBpms();document.getElementById('devTestResult').textContent='✓ Fixed '+n+' BPM values (normalized to 75-115 range).'">Fix BPM ranges</button>
         <button class="btn xs danger" onclick="devClearAll()">⚠ Clear all</button>
       </div>
     </div>
@@ -1353,7 +1354,10 @@ function renderTracklist(v){
   el.innerHTML=`
     <div class="tl-actions">
       <span style="font-size:9px;color:var(--muted)">${tracks.length} TRACKS</span>
-      ${bpmKey?`<button class="btn xs primary" onclick="fetchBpmForVinyl('${v.id}')">▶ BPM AUTO</button>`:`<button class="btn xs" onclick="openConfig()">Config BPM ⚙</button>`}
+      <div style="display:flex;gap:5px;">
+        <button class="btn xs" onclick="checkBpmForVinyl('${v.id}')">✓ Check BPM</button>
+        ${bpmKey?`<button class="btn xs primary" onclick="fetchBpmForVinyl('${v.id}')">▶ BPM AUTO</button>`:`<button class="btn xs" onclick="openConfig()">Config BPM ⚙</button>`}
+      </div>
     </div>
     <div class="tracklist">
       ${tracks.map((t,i)=>`
@@ -1472,11 +1476,59 @@ async function searchByBarcode(barcode){
   }catch(e){res.innerHTML=`<div class="d-status" style="color:var(--accent2)">Error: ${esc(e.message)}</div>`;}
 }
 
-// ── BPM ───────────────────────────────────────────────
+// ── BPM NORMALIZATION ─────────────────────────────────
+function normalizeBpm(bpm){
+  if(!bpm||bpm<=0)return null;
+  // Hip-hop range: 75-115 bpm
+  while(bpm>115)bpm=Math.round(bpm/2);
+  while(bpm<75)bpm=Math.round(bpm*2);
+  return bpm;
+}
+
+function fixAllBpms(){
+  let fixed=0;
+  vinyls.forEach(v=>{
+    // Fix album BPM
+    if(v.bpm){
+      const n=normalizeBpm(parseInt(v.bpm));
+      if(n&&n!==parseInt(v.bpm)){v.bpm=String(n);fixed++;}
+    }
+    // Fix track BPMs
+    if(v.tracklist)v.tracklist.forEach(t=>{
+      if(t.bpm){
+        const n=normalizeBpm(parseInt(t.bpm));
+        if(n&&n!==parseInt(t.bpm)){t.bpm=n;fixed++;}
+      }
+    });
+  });
+  save();
+  return fixed;
+}
 async function bpmFetch(url){
   try{const r=await fetch(url);if(!r.ok)throw new Error('status '+r.status);return await r.json();}
   catch{const r2=await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`);if(!r2.ok)throw new Error('proxy '+r2.status);return await r2.json();}
 }
+async function checkBpmForVinyl(vid){
+  const vi=vinyls.findIndex(v=>v.id===vid);if(vi<0)return;
+  const v=vinyls[vi];if(!v.tracklist||!v.tracklist.length)return;
+  let fixed=0;
+  v.tracklist.forEach((t,i)=>{
+    if(!t.bpm)return;
+    const n=normalizeBpm(parseInt(t.bpm));
+    if(n&&n!==parseInt(t.bpm)){
+      vinyls[vi].tracklist[i].bpm=n;
+      const inp=document.getElementById(`tbpm_${vid}_${i}`);
+      if(inp)inp.value=n;
+      fixed++;
+    }
+  });
+  save();
+  const msg=fixed>0?`✓ ${fixed} BPM corrigé${fixed>1?'s':''}.`:'✓ Tous les BPM sont dans la bonne plage.';
+  // Show feedback inline
+  const tl=document.querySelector('.tl-actions span');
+  if(tl){const orig=tl.textContent;tl.textContent=msg;tl.style.color='var(--owned)';setTimeout(()=>{tl.textContent=orig;tl.style.color='';},3000);}
+}
+
 async function fetchBpmForVinyl(vid){
   const key=localStorage.getItem('bpm_api_key');if(!key){openConfig();return;}
   const vi=vinyls.findIndex(v=>v.id===vid);if(vi<0)return;
@@ -1494,7 +1546,7 @@ async function fetchOneBpm(key,title,vid,trackIdx){
   try{
     const d1=await bpmFetch(`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${encodeURIComponent(title)}`);
     if(d1.search&&Array.isArray(d1.search)&&d1.search.length>0){
-      const bpm=parseInt(d1.search[0].tempo);
+      const bpm=normalizeBpm(parseInt(d1.search[0].tempo));
       if(bpm&&bpm>0){
         const vi=vinyls.findIndex(v=>v.id===vid);
         if(vi>=0&&vinyls[vi].tracklist[trackIdx]){
@@ -1529,7 +1581,7 @@ async function processBpmQueue(){
     try{
       const d1=await bpmFetch(`https://api.getsong.co/search/?api_key=${key}&type=song&lookup=${encodeURIComponent(item.title)}`);
       if(d1.search&&Array.isArray(d1.search)&&d1.search.length>0){
-        const bpm=parseInt(d1.search[0].tempo);
+        const bpm=normalizeBpm(parseInt(d1.search[0].tempo));
         if(bpm&&bpm>0){const vi=vinyls.findIndex(v=>v.id===item.vid);if(vi>=0&&vinyls[vi].tracklist[item.idx]){vinyls[vi].tracklist[item.idx].bpm=bpm;save();}}
       }
     }catch(e){console.warn('BPM queue',e);}
