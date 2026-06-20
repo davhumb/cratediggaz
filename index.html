@@ -704,6 +704,24 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   </div>
 </div>
 
+<!-- MORG RECORDING MODAL -->
+<div class="overlay center hidden" id="morgRecordingOverlay">
+  <div class="modal" style="max-width:400px;">
+    <button class="close-btn" onclick="closeModal('morgRecordingOverlay')">✕</button>
+    <div class="modal-title">SET RECORDING</div>
+    <div class="form-row">
+      <label>Link (YouTube, SoundCloud, Mixcloud...)</label>
+      <input type="url" id="morgRecordingUrl" placeholder="https://soundcloud.com/...">
+    </div>
+    <div style="font-size:9px;color:var(--muted);margin-top:-6px;margin-bottom:10px">YouTube · SoundCloud · Mixcloud · Google Drive · Dropbox · anything</div>
+    <div class="modal-footer">
+      <button class="btn xs danger" onclick="clearMorgRecording()">Remove link</button>
+      <button class="btn xs" onclick="closeModal('morgRecordingOverlay')">Cancel</button>
+      <button class="btn primary xs" onclick="saveMorgRecording()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- MORG NEW SET MODAL -->
 <div class="overlay center hidden" id="morgSetOverlay">
   <div class="modal" style="max-width:380px;">
@@ -1833,7 +1851,7 @@ function devClearAll(){if(!confirm('⚠️ Delete ALL?'))return;vinyls=[];save()
 // ── KEYBOARD ──────────────────────────────────────────
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    ['addOverlay','detailOverlay','configOverlay','crateOverlay','devOverlay'].forEach(id=>closeModal(id));
+    ['addOverlay','detailOverlay','configOverlay','crateOverlay','devOverlay','morgSetOverlay','morgTrackOverlay','morgRecordingOverlay'].forEach(id=>closeModal(id));
     closeDrawer();
   }
 });
@@ -1856,6 +1874,24 @@ let activeMorgId=null;
 let dragSrcIdx=null;
 
 function saveMorgSets(){localStorage.setItem('csp_morg',JSON.stringify(morgSets));}
+
+function editMorgRecording(id){
+  activeMorgId=id;
+  const set=morgSets.find(s=>s.id===id);if(!set)return;
+  document.getElementById('morgRecordingUrl').value=set.recordingUrl||'';
+  document.getElementById('morgRecordingOverlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('morgRecordingUrl').focus(),80);
+}
+function saveMorgRecording(){
+  const set=morgSets.find(s=>s.id===activeMorgId);if(!set)return;
+  set.recordingUrl=document.getElementById('morgRecordingUrl').value.trim()||null;
+  saveMorgSets();closeModal('morgRecordingOverlay');renderMorg();
+}
+function clearMorgRecording(){
+  const set=morgSets.find(s=>s.id===activeMorgId);if(!set)return;
+  set.recordingUrl=null;
+  saveMorgSets();closeModal('morgRecordingOverlay');renderMorg();
+}
 
 function openMorgModal(){document.getElementById('morgSetOverlay').classList.remove('hidden');setTimeout(()=>document.getElementById('morgSetName').focus(),80);}
 
@@ -1911,9 +1947,15 @@ function renderMorg(){
 
   main.innerHTML=`
     <div class="morg-header">
-      <div class="morg-title">${esc(set.name)}</div>
-      <div style="font-size:9px;color:var(--muted)">${set.tracks.length} TRACKS${avgBpm?' · AVG '+avgBpm+' BPM':''}${dur?' · ~'+formatDuration(dur):''}</div>
-      <div style="margin-left:auto;display:flex;gap:6px">
+      <div>
+        <div class="morg-title">${esc(set.name)}</div>
+        <div style="font-size:9px;color:var(--muted)">${set.tracks.length} TRACKS${avgBpm?' · AVG '+avgBpm+' BPM':''}${dur?' · ~'+formatDuration(dur):''}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        ${set.recordingUrl
+          ?`<a href="${esc(set.recordingUrl)}" target="_blank" class="btn xs primary" style="text-decoration:none">▶ Play Recording</a>`
+          :''}
+        <button class="btn xs" onclick="editMorgRecording('${set.id}')">🎙 ${set.recordingUrl?'Edit link':'Add recording'}</button>
         <button class="btn xs primary" onclick="openMorgTrackModal()">+ ADD TRACK</button>
         <button class="btn xs danger" onclick="deleteMorgSet('${set.id}')">Delete set</button>
       </div>
