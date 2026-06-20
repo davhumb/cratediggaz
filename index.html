@@ -323,6 +323,48 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 .rule-row select,.rule-row input{background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:'Fragment Mono',monospace;font-size:10px;padding:4px 6px;outline:none;}
 .rule-row select:focus,.rule-row input:focus{border-color:var(--accent);}
 
+/* ── M.O.R.G SETS ── */
+.morg-wrap{flex:1;overflow:hidden;display:flex;gap:0;}
+.morg-sidebar{width:200px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--bg2);display:flex;flex-direction:column;}
+.morg-sidebar::-webkit-scrollbar{width:3px;}
+.morg-set-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:all .1s;border-left:3px solid transparent;}
+.morg-set-item:hover{background:var(--bg3);}
+.morg-set-item.active{border-left-color:var(--accent2);background:rgba(255,60,60,.05);}
+.morg-set-name{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--text);letter-spacing:.06em;line-height:1.1;}
+.morg-set-meta{font-size:9px;color:var(--muted);margin-top:2px;}
+.morg-sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);margin-top:auto;}
+.morg-main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.morg-header{flex-shrink:0;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.morg-title{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--accent2);letter-spacing:.1em;}
+.morg-list{flex:1;overflow-y:auto;}
+.morg-list::-webkit-scrollbar{width:4px;}
+.morg-list::-webkit-scrollbar-thumb{background:var(--border2);}
+.morg-track{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--border);transition:background .1s;}
+.morg-track:hover{background:var(--bg3);}
+.morg-track-num{color:var(--muted);font-size:10px;width:22px;text-align:center;flex-shrink:0;}
+.morg-track-info{flex:1;min-width:0;}
+.morg-track-title{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.morg-track-artist{font-size:10px;color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-weight:700;}
+.morg-track-album{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.morg-track-bpm{font-size:16px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--accent3);flex-shrink:0;width:50px;text-align:center;}
+.morg-track-delta{font-size:9px;flex-shrink:0;width:32px;text-align:center;}
+.morg-track-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px 4px;flex-shrink:0;}
+.morg-track-del:hover{color:var(--accent2);}
+.morg-footer{flex-shrink:0;padding:8px 14px;border-top:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);}
+
+/* DRAG HANDLE */
+.drag-handle{cursor:grab;color:var(--muted);font-size:14px;padding:0 4px;flex-shrink:0;}
+.drag-handle:active{cursor:grabbing;}
+.morg-track.drag-over{border-top:2px solid var(--accent);}
+
+/* MORG TRACK SEARCH */
+.morg-track-result{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;transition:all .1s;}
+.morg-track-result:hover{border-color:var(--accent);}
+.mtr-info{flex:1;min-width:0;}
+.mtr-title{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mtr-sub{font-size:9px;color:var(--muted);}
+.mtr-bpm{font-size:12px;color:var(--accent3);flex-shrink:0;}
+
 /* ── DEV MODE ── */
 .dev-modal .modal{max-width:420px;border-top-color:var(--accent2);}
 .cs{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);}
@@ -384,6 +426,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
     <div class="nav-item" onclick="switchSection('dj')">
       <span class="nav-icon">♫</span>
       <span class="nav-label">DJ Mode</span>
+    </div>
+    <div class="nav-item" onclick="switchSection('morg')">
+      <span class="nav-icon">▶</span>
+      <span class="nav-label">M.O.R.G Sets</span>
+      <span class="nav-badge" id="navBadgeMorg" style="background:var(--accent2)">0</span>
     </div>
     <div class="nav-item" onclick="switchSection('samples')">
       <span class="nav-icon">◈</span>
@@ -495,6 +542,21 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
         <span>TRACK / ARTIST</span><span>ALBUM</span><span>BPM</span><span>KEY</span>
       </div>
       <div class="dj-list" id="djList"></div>
+    </div>
+  </div>
+
+  <!-- M.O.R.G SETS -->
+  <div class="section hidden" id="sectionMorg">
+    <div class="morg-wrap">
+      <div class="morg-sidebar" id="morgSidebar"></div>
+      <div class="morg-main" id="morgMain">
+        <div class="empty" style="height:auto;padding:40px">
+          <div class="empty-icon" style="font-size:48px">▶</div>
+          <h3>M.O.R.G SETS</h3>
+          <p>Create a set and build your tracklist.</p>
+          <button class="btn primary" onclick="openMorgModal()">+ NEW SET</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -642,6 +704,32 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   </div>
 </div>
 
+<!-- MORG NEW SET MODAL -->
+<div class="overlay center hidden" id="morgSetOverlay">
+  <div class="modal" style="max-width:380px;">
+    <button class="close-btn" onclick="closeModal('morgSetOverlay')">✕</button>
+    <div class="modal-title">NEW SET</div>
+    <div class="form-row"><label>Set Name</label><input type="text" id="morgSetName" placeholder="ex. Friday Night Set, Boom Bap 92..."></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('morgSetOverlay')">Cancel</button>
+      <button class="btn primary" onclick="saveMorgSet()">CREATE</button>
+    </div>
+  </div>
+</div>
+
+<!-- MORG ADD TRACK MODAL -->
+<div class="overlay center hidden" id="morgTrackOverlay">
+  <div class="modal" style="max-width:480px;">
+    <button class="close-btn" onclick="closeModal('morgTrackOverlay')">✕</button>
+    <div class="modal-title">ADD TRACK</div>
+    <div style="margin-bottom:10px;">
+      <input type="text" id="morgTrackSearch" placeholder="Search artist, title..." oninput="renderMorgTrackSearch()"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Fragment Mono',monospace;font-size:11px;padding:7px 9px;outline:none;">
+    </div>
+    <div id="morgTrackList" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;"></div>
+  </div>
+</div>
+
 <!-- CONFIG MODAL -->
 <div class="overlay center hidden config-modal" id="configOverlay">
   <div class="modal">
@@ -736,13 +824,13 @@ function switchSection(name){
   document.getElementById('section'+name.charAt(0).toUpperCase()+name.slice(1)).classList.remove('hidden');
   // nav active
   document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
-  document.querySelectorAll('.nav-item')[['collection','crates','dj','samples','journal','stats','config'].indexOf(name)]?.classList.add('active');
+  document.querySelectorAll('.nav-item')[['collection','crates','dj','morg','samples','journal','stats','config'].indexOf(name)]?.classList.add('active');
   // toolbar & stats bar
   const showToolbar=['collection'].includes(name);
   document.getElementById('toolbar').classList.toggle('hidden',!showToolbar);
   document.getElementById('statsBar').classList.toggle('hidden',!showToolbar);
   // section title
-  const titles={collection:'',crates:'Smart Crates',dj:'DJ Mode',samples:'Sample Digging',journal:'Journal',stats:'Stats'};
+  const titles={collection:'',crates:'Smart Crates',dj:'DJ Mode',morg:'M.O.R.G Sets',samples:'Sample Digging',journal:'Journal',stats:'Stats'};
   document.getElementById('sectionTitle').textContent=titles[name]||'';
   // add btn
   document.getElementById('addBtn').style.display=name==='collection'?'':'none';
@@ -750,6 +838,7 @@ function switchSection(name){
   if(name==='collection')render();
   else if(name==='crates')renderCrates();
   else if(name==='dj')renderDj();
+  else if(name==='morg')renderMorg();
   else if(name==='samples')renderSamples();
   else if(name==='journal')renderJournal();
   else if(name==='stats')renderStats();
@@ -758,6 +847,8 @@ function switchSection(name){
 
 function updateNavBadge(){
   document.getElementById('navBadgeCollection').textContent=vinyls.length;
+  const mb=document.getElementById('navBadgeMorg');
+  if(mb)mb.textContent=morgSets.length;
 }
 
 // ── FILTER/SORT ───────────────────────────────────────
@@ -1751,9 +1842,200 @@ if(!vinyls.length){
   ];save();
 }
 
-// ── BACKUP / RESTORE ──────────────────────────────────
+// ── M.O.R.G SETS ──────────────────────────────────────
+let morgSets=JSON.parse(localStorage.getItem('csp_morg')||'[]');
+let activeMorgId=null;
+let dragSrcIdx=null;
+
+function saveMorgSets(){localStorage.setItem('csp_morg',JSON.stringify(morgSets));}
+
+function openMorgModal(){document.getElementById('morgSetOverlay').classList.remove('hidden');setTimeout(()=>document.getElementById('morgSetName').focus(),80);}
+
+function saveMorgSet(){
+  const name=document.getElementById('morgSetName').value.trim();
+  if(!name)return;
+  const set={id:uid(),name,tracks:[],created:Date.now()};
+  morgSets.push(set);saveMorgSets();
+  closeModal('morgSetOverlay');
+  document.getElementById('morgSetName').value='';
+  activeMorgId=set.id;
+  renderMorg();
+  updateNavBadge();
+}
+
+function deleteMorgSet(id){
+  if(!confirm('Delete this set?'))return;
+  morgSets=morgSets.filter(s=>s.id!==id);
+  if(activeMorgId===id)activeMorgId=morgSets[0]?.id||null;
+  saveMorgSets();renderMorg();updateNavBadge();
+}
+
+function renderMorg(){
+  updateNavBadge();
+  const sidebar=document.getElementById('morgSidebar');
+  const main=document.getElementById('morgMain');
+  sidebar.innerHTML=`
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <button class="btn xs primary" style="width:100%" onclick="openMorgModal()">+ NEW SET</button>
+    </div>
+    ${morgSets.map(s=>`
+      <div class="morg-set-item ${activeMorgId===s.id?'active':''}" onclick="selectMorgSet('${s.id}')">
+        <div class="morg-set-name">${esc(s.name)}</div>
+        <div class="morg-set-meta">${s.tracks.length} track${s.tracks.length!==1?'s':''}</div>
+      </div>`).join('')}
+    <div class="morg-sidebar-footer">
+      <button class="btn xs" style="width:100%" onclick="exportMorgSet()">⬇ Export</button>
+    </div>`;
+
+  if(!activeMorgId||!morgSets.length){
+    main.innerHTML=`<div class="empty" style="height:auto;padding:40px">
+      <div class="empty-icon" style="font-size:48px">▶</div>
+      <h3>M.O.R.G SETS</h3>
+      <p>Create a set to start building.</p>
+    </div>`;return;
+  }
+
+  const set=morgSets.find(s=>s.id===activeMorgId);
+  if(!set)return;
+
+  const avgBpm=set.tracks.length?Math.round(set.tracks.filter(t=>t.bpm).reduce((a,t)=>a+t.bpm,0)/Math.max(1,set.tracks.filter(t=>t.bpm).length)):null;
+  const dur=set.tracks.reduce((a,t)=>a+(t.duration?parseDuration(t.duration):0),0);
+
+  main.innerHTML=`
+    <div class="morg-header">
+      <div class="morg-title">${esc(set.name)}</div>
+      <div style="font-size:9px;color:var(--muted)">${set.tracks.length} TRACKS${avgBpm?' · AVG '+avgBpm+' BPM':''}${dur?' · ~'+formatDuration(dur):''}</div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn xs primary" onclick="openMorgTrackModal()">+ ADD TRACK</button>
+        <button class="btn xs danger" onclick="deleteMorgSet('${set.id}')">Delete set</button>
+      </div>
+    </div>
+    <div class="morg-list" id="morgTrackListView">
+      ${set.tracks.length===0
+        ?`<div class="empty" style="height:auto;padding:30px"><p>No tracks yet. Add some!</p></div>`
+        :set.tracks.map((t,i)=>{
+          const prev=set.tracks[i-1];
+          const delta=prev&&prev.bpm&&t.bpm?t.bpm-prev.bpm:null;
+          const deltaStr=delta!==null?(delta>0?`<span style="color:var(--accent2)">+${delta}</span>`:`<span style="color:var(--owned)">${delta}</span>`):'';
+          return`<div class="morg-track" draggable="true"
+            ondragstart="dragStart(${i})" ondragover="dragOver(event,${i})" ondrop="dragDrop(event,${i})" ondragend="dragEnd()">
+            <span class="drag-handle">⠿</span>
+            <span class="morg-track-num">${i+1}</span>
+            <div class="morg-track-info">
+              <div class="morg-track-title">${esc(t.title)}</div>
+              <div class="morg-track-artist">${esc(t.artist)}</div>
+              <div class="morg-track-album">${esc(t.album)}</div>
+            </div>
+            <div class="morg-track-delta">${deltaStr}</div>
+            <div class="morg-track-bpm">${t.bpm||'—'}</div>
+            <button class="morg-track-del" onclick="removeMorgTrack(${i})">✕</button>
+          </div>`;
+        }).join('')}
+    </div>
+    <div class="morg-footer">
+      <span>${set.tracks.length} tracks</span>
+      ${avgBpm?`<span>· Avg BPM: <span style="color:var(--accent3)">${avgBpm}</span></span>`:''}
+      ${dur?`<span>· Duration: ~${formatDuration(dur)}</span>`:''}
+    </div>`;
+}
+
+function selectMorgSet(id){activeMorgId=id;renderMorg();}
+
+function parseDuration(d){
+  if(!d)return 0;
+  const p=d.split(':');
+  if(p.length===2)return parseInt(p[0])*60+parseInt(p[1]);
+  return 0;
+}
+function formatDuration(secs){
+  const m=Math.floor(secs/60),s=secs%60;
+  return`${m}:${String(s).padStart(2,'0')}`;
+}
+
+// ── ADD TRACK ─────────────────────────────────────────
+function openMorgTrackModal(){
+  document.getElementById('morgTrackOverlay').classList.remove('hidden');
+  document.getElementById('morgTrackSearch').value='';
+  renderMorgTrackSearch();
+  setTimeout(()=>document.getElementById('morgTrackSearch').focus(),80);
+}
+
+function renderMorgTrackSearch(){
+  const q=document.getElementById('morgTrackSearch').value.toLowerCase();
+  const el=document.getElementById('morgTrackList');
+  // Collect all tracks with BPM from tracklists + album-level
+  let results=[];
+  vinyls.forEach(v=>{
+    if(v.tracklist&&v.tracklist.length){
+      v.tracklist.forEach(t=>{
+        if(!q||t.title.toLowerCase().includes(q)||v.artist.toLowerCase().includes(q)||v.album.toLowerCase().includes(q)){
+          results.push({title:t.title,artist:v.artist,album:v.album,bpm:t.bpm||null,duration:t.duration||null,vid:v.id});
+        }
+      });
+    } else {
+      if(!q||(v.artist+' '+v.album).toLowerCase().includes(q)){
+        results.push({title:v.album,artist:v.artist,album:'',bpm:v.bpm?parseInt(v.bpm):null,duration:null,vid:v.id});
+      }
+    }
+  });
+  results=results.slice(0,40);
+  if(!results.length){el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:11px">No results.</div>`;return;}
+  el.innerHTML=results.map((t,i)=>`
+    <div class="morg-track-result" onclick="addMorgTrack(${i})" data-idx="${i}">
+      <div class="mtr-info">
+        <div class="mtr-title">${esc(t.title)}</div>
+        <div class="mtr-sub">${esc(t.artist)}${t.album?' — '+esc(t.album):''}</div>
+      </div>
+      <div class="mtr-bpm">${t.bpm?t.bpm+' bpm':'—'}</div>
+    </div>`).join('');
+  // Store results for reference
+  window._morgSearchResults=results;
+}
+
+function addMorgTrack(idx){
+  const t=window._morgSearchResults[idx];if(!t)return;
+  const set=morgSets.find(s=>s.id===activeMorgId);if(!set)return;
+  set.tracks.push({...t});
+  saveMorgSets();closeModal('morgTrackOverlay');renderMorg();
+}
+
+function removeMorgTrack(idx){
+  const set=morgSets.find(s=>s.id===activeMorgId);if(!set)return;
+  set.tracks.splice(idx,1);saveMorgSets();renderMorg();
+}
+
+// ── DRAG & DROP ───────────────────────────────────────
+function dragStart(idx){dragSrcIdx=idx;}
+function dragOver(e,idx){e.preventDefault();document.querySelectorAll('.morg-track').forEach((el,i)=>el.classList.toggle('drag-over',i===idx&&i!==dragSrcIdx));}
+function dragEnd(){document.querySelectorAll('.morg-track').forEach(el=>el.classList.remove('drag-over'));}
+function dragDrop(e,idx){
+  e.preventDefault();
+  if(dragSrcIdx===null||dragSrcIdx===idx)return;
+  const set=morgSets.find(s=>s.id===activeMorgId);if(!set)return;
+  const moved=set.tracks.splice(dragSrcIdx,1)[0];
+  set.tracks.splice(idx,0,moved);
+  dragSrcIdx=null;saveMorgSets();renderMorg();
+}
+
+// ── EXPORT SET ────────────────────────────────────────
+function exportMorgSet(){
+  const set=morgSets.find(s=>s.id===activeMorgId);if(!set)return;
+  let txt=`M.O.R.G SET — ${set.name}\n${'─'.repeat(40)}\n\n`;
+  set.tracks.forEach((t,i)=>{
+    txt+=`${String(i+1).padStart(2,'0')}. ${t.title}\n    ${t.artist}${t.album?' — '+t.album:''}${t.bpm?'\n    BPM: '+t.bpm:''}\n\n`;
+  });
+  const avg=set.tracks.filter(t=>t.bpm).length?Math.round(set.tracks.filter(t=>t.bpm).reduce((a,t)=>a+t.bpm,0)/set.tracks.filter(t=>t.bpm).length):null;
+  if(avg)txt+=`${'─'.repeat(40)}\nAvg BPM: ${avg}\n`;
+  const blob=new Blob([txt],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`morg_${set.name.replace(/\s+/g,'_').toLowerCase()}.txt`;
+  a.click();
+}
+
+
 function backupData(){
-  const data={vinyls,crates,version:1,date:Date.now()};
+  const data={vinyls,crates,morgSets,version:1,date:Date.now()};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -1777,7 +2059,8 @@ function restoreData(){
         if(!confirm(`Import ${imp.vinyls.length} vinyls? This will replace your current collection.`))return;
         vinyls=imp.vinyls;
         if(imp.crates)crates=imp.crates;
-        save();saveCrates();
+        if(imp.morgSets)morgSets=imp.morgSets;
+        save();saveCrates();saveMorgSets();
         render();updateBackupStatus();
         closeDrawer();
         alert(`✓ ${vinyls.length} vinyls restored.`);
