@@ -722,11 +722,19 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   <div class="modal" style="max-width:480px;">
     <button class="close-btn" onclick="closeModal('morgTrackOverlay')">✕</button>
     <div class="modal-title">ADD TRACK</div>
-    <div style="margin-bottom:10px;">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
       <input type="text" id="morgTrackSearch" placeholder="Search artist, title..." oninput="renderMorgTrackSearch()"
-        style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Fragment Mono',monospace;font-size:11px;padding:7px 9px;outline:none;">
+        style="flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:'Fragment Mono',monospace;font-size:11px;padding:6px 8px;outline:none;">
+      <select id="morgTrackSort" onchange="renderMorgTrackSearch()" style="background:var(--bg3);border:1px solid var(--border2);color:var(--muted2);font-family:'Fragment Mono',monospace;font-size:10px;padding:5px 7px;outline:none;cursor:pointer;">
+        <option value="default">Default</option>
+        <option value="bpm_asc">BPM ↑</option>
+        <option value="bpm_desc">BPM ↓</option>
+        <option value="year_asc">Year ↑</option>
+        <option value="year_desc">Year ↓</option>
+        <option value="artist">Artist A→Z</option>
+      </select>
     </div>
-    <div id="morgTrackList" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;"></div>
+    <div id="morgTrackList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;"></div>
   </div>
 </div>
 
@@ -1962,33 +1970,44 @@ function openMorgTrackModal(){
 
 function renderMorgTrackSearch(){
   const q=document.getElementById('morgTrackSearch').value.toLowerCase();
+  const sort=document.getElementById('morgTrackSort').value;
   const el=document.getElementById('morgTrackList');
-  // Collect all tracks with BPM from tracklists + album-level
   let results=[];
   vinyls.forEach(v=>{
+    const year=parseInt(v.yearOriginal||v.year)||null;
     if(v.tracklist&&v.tracklist.length){
       v.tracklist.forEach(t=>{
         if(!q||t.title.toLowerCase().includes(q)||v.artist.toLowerCase().includes(q)||v.album.toLowerCase().includes(q)){
-          results.push({title:t.title,artist:v.artist,album:v.album,bpm:t.bpm||null,duration:t.duration||null,vid:v.id});
+          results.push({title:t.title,artist:v.artist,album:v.album,bpm:t.bpm?parseInt(t.bpm):null,duration:t.duration||null,year,vid:v.id});
         }
       });
     } else {
       if(!q||(v.artist+' '+v.album).toLowerCase().includes(q)){
-        results.push({title:v.album,artist:v.artist,album:'',bpm:v.bpm?parseInt(v.bpm):null,duration:null,vid:v.id});
+        results.push({title:v.album,artist:v.artist,album:'',bpm:v.bpm?parseInt(v.bpm):null,duration:null,year,vid:v.id});
       }
     }
   });
-  results=results.slice(0,40);
+
+  // Sort
+  results.sort((a,b)=>{
+    if(sort==='bpm_asc')return(a.bpm||9999)-(b.bpm||9999);
+    if(sort==='bpm_desc')return(b.bpm||0)-(a.bpm||0);
+    if(sort==='year_asc')return(a.year||9999)-(b.year||9999);
+    if(sort==='year_desc')return(b.year||0)-(a.year||0);
+    if(sort==='artist')return(a.artist||'').localeCompare(b.artist||'');
+    return 0;
+  });
+
+  results=results.slice(0,60);
   if(!results.length){el.innerHTML=`<div style="text-align:center;padding:16px;color:var(--muted);font-size:11px">No results.</div>`;return;}
   el.innerHTML=results.map((t,i)=>`
-    <div class="morg-track-result" onclick="addMorgTrack(${i})" data-idx="${i}">
+    <div class="morg-track-result" onclick="addMorgTrack(${i})">
       <div class="mtr-info">
         <div class="mtr-title">${esc(t.title)}</div>
-        <div class="mtr-sub">${esc(t.artist)}${t.album?' — '+esc(t.album):''}</div>
+        <div class="mtr-sub">${esc(t.artist)}${t.album?' — '+esc(t.album):''}${t.year?' · '+t.year:''}</div>
       </div>
       <div class="mtr-bpm">${t.bpm?t.bpm+' bpm':'—'}</div>
     </div>`).join('');
-  // Store results for reference
   window._morgSearchResults=results;
 }
 
